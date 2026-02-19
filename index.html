@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot IA - Rendu TP 5</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .message-bubble {
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        @keyframes pulse-custom {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .loading-dot {
+            animation: pulse-custom 1.5s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 h-screen flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 p-4 sticky top-0 z-10">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-800">Assistant IA Pro</h1>
+                    <p class="text-xs text-green-500 font-medium flex items-center gap-1">
+                        <span class="w-2 h-2 bg-green-500 rounded-full"></span> Connecté
+                    </p>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">TP 5 - Chatbot API</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Chat Container -->
+    <main id="chat-container" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+        <div class="max-w-4xl mx-auto space-y-6">
+            <!-- Welcome Message -->
+            <div class="flex justify-start">
+                <div class="message-bubble bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl rounded-tl-none shadow-sm">
+                    Bonjour ! Je suis votre assistant virtuel pour ce TP. Comment puis-je vous aider aujourd'hui ?
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Typing Indicator (Hidden by default) -->
+    <div id="loading-indicator" class="hidden max-w-4xl mx-auto px-6 mb-4">
+        <div class="flex items-center gap-2 text-slate-400 text-sm">
+            <div class="flex gap-1">
+                <span class="w-1.5 h-1.5 bg-slate-400 rounded-full loading-dot" style="animation-delay: 0s"></span>
+                <span class="w-1.5 h-1.5 bg-slate-400 rounded-full loading-dot" style="animation-delay: 0.2s"></span>
+                <span class="w-1.5 h-1.5 bg-slate-400 rounded-full loading-dot" style="animation-delay: 0.4s"></span>
+            </div>
+            L'IA réfléchit...
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <footer class="bg-white border-t border-slate-200 p-4 pb-8 md:pb-4">
+        <div class="max-w-4xl mx-auto">
+            <form id="chat-form" class="relative flex items-center">
+                <input 
+                    type="text" 
+                    id="user-input" 
+                    placeholder="Écrivez votre message ici..." 
+                    class="w-full bg-slate-100 border-none rounded-2xl py-4 pl-6 pr-14 focus:ring-2 focus:ring-indigo-500 transition-all outline-none text-slate-700"
+                    autocomplete="off"
+                >
+                <button 
+                    type="submit" 
+                    class="absolute right-2 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    id="send-button"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </button>
+            </form>
+            <p class="text-[10px] text-center text-slate-400 mt-3">Interface conçue pour le rendu du TP 5 - Technologie Web & IA</p>
+        </div>
+    </footer>
+
+    <script>
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const chatContainer = document.getElementById('chat-container').firstElementChild;
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const sendButton = document.getElementById('send-button');
+        
+        // Configuration API
+        const apiKey = ""; // La clé est injectée par l'environnement
+        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
+
+        async function fetchAIResponse(prompt) {
+            let delay = 1000;
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(`${API_URL}?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            systemInstruction: { 
+                                parts: [{ text: "Tu es un assistant professionnel concis et utile. Réponds en français." }] 
+                            }
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('API Error');
+                    
+                    const data = await response.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolé, je n'ai pas pu générer de réponse.";
+                } catch (error) {
+                    if (i === 4) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        function appendMessage(text, isUser = false) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = `message-bubble p-4 rounded-2xl shadow-sm ${
+                isUser 
+                ? 'bg-indigo-600 text-white rounded-tr-none' 
+                : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'
+            }`;
+            bubble.textContent = text;
+            
+            wrapper.appendChild(bubble);
+            chatContainer.appendChild(wrapper);
+            
+            // Scroll to bottom
+            const container = document.getElementById('chat-container');
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // UI State
+            userInput.value = '';
+            userInput.disabled = true;
+            sendButton.disabled = true;
+            appendMessage(message, true);
+            loadingIndicator.classList.remove('hidden');
+
+            try {
+                const aiResponse = await fetchAIResponse(message);
+                appendMessage(aiResponse, false);
+            } catch (error) {
+                appendMessage("Erreur : Impossible de contacter l'API après plusieurs tentatives. Vérifiez votre connexion.", false);
+            } finally {
+                loadingIndicator.classList.add('hidden');
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                userInput.focus();
+            }
+        });
+    </script>
+</body>
+</html>
