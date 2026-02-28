@@ -55,7 +55,7 @@
         <div class="max-w-4xl mx-auto space-y-6" id="messages-wrapper">
             <div class="flex justify-start">
                 <div class="message-bubble bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl rounded-tl-none shadow-sm">
-                    Bonjour ! Je suis configuré pour utiliser votre clé OpenRouter. Comment puis-je vous aider ?
+                    Bonjour ! Je suis configuré pour utiliser votre clé OpenRouter avec un modèle gratuit. Comment puis-je vous aider ?
                 </div>
             </div>
         </div>
@@ -106,6 +106,7 @@
         const sendButton = document.getElementById('send-button');
         
         // --- CONFIGURATION OPENROUTER ---
+        // Votre clé API actuelle
         const apiKey = "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"; 
         const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -120,27 +121,34 @@
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${apiKey}`,
-                        'HTTP-Referer': window.location.href, // Requis par OpenRouter
-                        'X-Title': 'TP5 Chatbot'
+                        'HTTP-Referer': window.location.origin, 
+                        'X-Title': 'TP5 Chatbot Student'
                     },
                     body: JSON.stringify({
-                        model: "google/gemini-2.0-flash-001", // Modèle gratuit/rapide sur OpenRouter
-                        messages: chatMessages
+                        // Utilisation d'un modèle explicitement gratuit sur OpenRouter
+                        model: "google/gemini-2.0-flash-lite-preview-02-05:free", 
+                        messages: chatMessages,
+                        temperature: 0.7
                     })
                 });
 
+                const data = await response.json();
+
                 if (!response.ok) {
-                    const errorMsg = await response.text();
-                    throw new Error(errorMsg);
+                    console.error("Erreur API détaillée:", data);
+                    // Si l'erreur est liée aux crédits, on le précise
+                    if (data.error && data.error.code === 402) {
+                        throw new Error("Crédits insuffisants sur OpenRouter.");
+                    }
+                    throw new Error(data.error?.message || "Erreur inconnue");
                 }
                 
-                const data = await response.json();
                 const aiText = data.choices[0].message.content;
-                
                 chatMessages.push({ role: "assistant", content: aiText });
                 return aiText;
+
             } catch (error) {
-                console.error("Erreur détaillée:", error);
+                console.error("Erreur attrapée:", error);
                 throw error;
             }
         }
@@ -177,7 +185,13 @@
                 const aiResponse = await fetchAIResponse(message);
                 appendMessage(aiResponse, false);
             } catch (error) {
-                appendMessage("Erreur OpenRouter : Vérifiez que votre clé est active et que vous avez des crédits (ou utilisez un modèle gratuit).", false);
+                let errorMsg = "Erreur : ";
+                if (error.message.includes("Crédits")) {
+                    errorMsg += "Votre clé OpenRouter n'a pas de crédits. Essayez de créer une nouvelle clé ou d'utiliser un modèle gratuit.";
+                } else {
+                    errorMsg += "Impossible de contacter OpenRouter. Vérifiez la console (F12) pour plus de détails.";
+                }
+                appendMessage(errorMsg, false);
             } finally {
                 loadingIndicator.classList.add('hidden');
                 userInput.disabled = false;
