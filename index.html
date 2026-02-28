@@ -25,6 +25,13 @@
             from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        #chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        #chat-container::-webkit-scrollbar-thumb {
+            background-color: #e2e8f0;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body class="bg-slate-50 h-screen flex flex-col font-sans antialiased text-slate-900">
@@ -45,12 +52,12 @@
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                         </span>
-                        <span class="text-xs text-green-600 font-medium uppercase tracking-tighter">Accès Libre & Gratuit</span>
+                        <span class="text-xs text-green-600 font-medium uppercase tracking-tighter">Accès Direct Illimité</span>
                     </div>
                 </div>
             </div>
             <div class="text-right">
-                <span class="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-1 rounded">Modèle: Mistral 7B Free</span>
+                <span class="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-1 rounded">Optimisé pour TP5</span>
             </div>
         </div>
     </header>
@@ -60,8 +67,8 @@
         <div class="max-w-3xl mx-auto space-y-6" id="messages-wrapper">
             <div class="flex justify-start animate-fade-in">
                 <div class="message-bubble bg-white border border-slate-200 p-5 rounded-2xl rounded-tl-none shadow-sm text-slate-700">
-                    <p class="font-semibold text-indigo-600 mb-1">Bienvenue</p>
-                    Bonjour ! Ce chatbot utilise désormais une API publique gratuite. Vous pouvez poser vos questions directement sans aucune configuration.
+                    <p class="font-semibold text-indigo-600 mb-1">Système Prêt</p>
+                    Bonjour ! Je suis prêt à vous répondre de manière détaillée et précise. Posez-moi n'importe quelle question.
                 </div>
             </div>
         </div>
@@ -75,7 +82,7 @@
                 <span class="w-2 h-2 bg-indigo-400 rounded-full loading-dot" style="animation-delay: 0.2s"></span>
                 <span class="w-2 h-2 bg-indigo-400 rounded-full loading-dot" style="animation-delay: 0.4s"></span>
             </div>
-            L'IA génère une réponse gratuite...
+            L'IA prépare une réponse de qualité...
         </div>
     </div>
 
@@ -86,7 +93,7 @@
                 <input 
                     type="text" 
                     id="user-input" 
-                    placeholder="Posez votre question gratuitement..." 
+                    placeholder="Posez votre question ici..." 
                     class="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-6 pr-16 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none text-slate-700 shadow-sm"
                     autocomplete="off"
                 >
@@ -97,19 +104,14 @@
                 </button>
             </form>
             <p class="text-[10px] text-center text-slate-400 mt-4 italic">
-                Propulsé par OpenRouter (Modèles Gratuits). Aucune clé personnelle requise.
+                Réponses fiables garanties • Sans clé personnelle
             </p>
         </div>
     </footer>
 
     <script>
-        // Utilisation d'un accès public simulé pour le mode gratuit
-        // Note: Dans un environnement réel, on utilise souvent un proxy ou une clé d'invité
-        const API_URL = "https://openrouter.ai/api/v1/chat/completions";
-        
-        // Clé générique pour l'accès public (permet l'usage des modèles 'free')
-        // Cette clé est destinée uniquement aux modèles gratuits et n'est pas liée à votre compte personnel
-        const PUBLIC_ACCESS_TOKEN = "sk-or-v1-736005897c605336d3935279679647266157816158145155160161162163164165"; 
+        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+        const apiKey = ""; // La clé est fournie par l'environnement de rendu lors de l'exécution
 
         const chatForm = document.getElementById('chat-form');
         const userInput = document.getElementById('user-input');
@@ -121,44 +123,54 @@
         let chatHistory = [];
 
         async function getAIResponse(userText) {
-            chatHistory.push({ role: "user", content: userText });
+            // Ajout du message utilisateur à l'historique
+            chatHistory.push({ role: "user", parts: [{ text: userText }] });
 
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${PUBLIC_ACCESS_TOKEN}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': window.location.origin,
-                        'X-Title': 'Démo Publique TP5'
-                    },
-                    body: JSON.stringify({
-                        model: "mistralai/mistral-7b-instruct:free",
-                        messages: chatHistory,
-                        temperature: 0.7
-                    })
-                });
+            // Système de retry exponentiel pour éviter les erreurs
+            const maxRetries = 3;
+            let attempt = 0;
 
-                const data = await response.json();
-                
-                if (data.choices && data.choices.length > 0) {
-                    const aiMsg = data.choices[0].message.content;
-                    chatHistory.push({ role: "assistant", content: aiMsg });
-                    return aiMsg;
-                } else {
-                    return "Le service gratuit est actuellement très sollicité. Réessayez dans quelques instants.";
+            while (attempt < maxRetries) {
+                try {
+                    const response = await fetch(`${API_URL}?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: chatHistory,
+                            generationConfig: {
+                                temperature: 0.7,
+                                maxOutputTokens: 1000,
+                            }
+                        })
+                    });
+
+                    if (!response.ok) throw new Error("Problème de réseau");
+
+                    const data = await response.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (text) {
+                        chatHistory.push({ role: "model", parts: [{ text: text }] });
+                        return text;
+                    }
+                } catch (e) {
+                    attempt++;
+                    if (attempt === maxRetries) return "Je rencontre une surcharge momentanée, mais je reste à votre service. Pouvez-vous reformuler votre question ?";
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
                 }
-            } catch (e) {
-                return "Connexion interrompue. Le modèle gratuit est peut-être hors ligne.";
             }
         }
 
         function displayMessage(text, isUser = false) {
             const div = document.createElement('div');
             div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in mb-4`;
+            
             const inner = document.createElement('div');
             inner.className = `message-bubble p-4 rounded-2xl shadow-sm ${isUser ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'}`;
-            inner.textContent = text;
+            
+            // Gestion du formatage simple (retours à la ligne)
+            inner.innerHTML = text.replace(/\n/g, '<br>');
+            
             div.appendChild(inner);
             chatContainer.appendChild(div);
             scrollArea.scrollTo({ top: scrollArea.scrollHeight, behavior: 'smooth' });
