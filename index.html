@@ -55,7 +55,7 @@
         <div class="max-w-4xl mx-auto space-y-6" id="messages-wrapper">
             <div class="flex justify-start">
                 <div class="message-bubble bg-white border border-slate-200 text-slate-700 p-4 rounded-2xl rounded-tl-none shadow-sm">
-                    Bonjour ! Je suis prêt pour vos tests. J'utilise la clé fournie pour répondre à vos messages.
+                    Bonjour ! Je suis prêt pour vos tests. J'utilise votre nouvelle clé API pour répondre à vos messages.
                 </div>
             </div>
         </div>
@@ -106,7 +106,8 @@
         const sendButton = document.getElementById('send-button');
         
         // --- CONFIGURATION ---
-        const apiKey = "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"; 
+        // Mise à jour avec la nouvelle clé fournie
+        const apiKey = "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"; 
         const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
         let messages = [];
@@ -176,7 +177,7 @@
                 const reply = await fetchAIResponse(val);
                 appendMessage(reply, false);
             } catch (e) {
-                appendMessage("Impossible de joindre l'IA. Vérifiez que la clé API est toujours valide dans le code source.", false);
+                appendMessage("Impossible de joindre l'IA. Vérifiez que la clé API est toujours valide dans le code source ou essayez de rafraîchir la page.", false);
             } finally {
                 loadingIndicator.classList.add('hidden');
                 userInput.disabled = false;
